@@ -17,11 +17,17 @@
   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-directory"} ))))
 (def default-thumbnail
   (File. (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-default"})))))
+(def alternate-thumbnail
+    (File. (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-alternate"})))))
 
 (defn thumbnail-file
   "given a string representing an image, returns the File. containing the thumbnail"
   [image-path]
   (File. (str thumbnail-dir "/" image-path)))
+
+(defn get-keyword
+  [keyword-name]
+  (first (mc/find-maps db keyword-collection {:_id keyword-name})))
 
 (defn sample-thumbnail
   "given a keyword returns the thumbnail image sample File."
@@ -29,11 +35,7 @@
   (let [kw (get-keyword given-keyword)]
     (if (:sample kw)
       (thumbnail-file (:sample kw))
-      default-thumbnail)))
-
-(defn get-keyword
-  [keyword-name]
-  (first (mc/find-maps db keyword-collection {:_id keyword-name})))
+      alternate-thumbnail)))
 
 (defn branch?
   [keyword-node]
@@ -54,22 +56,25 @@
 
 (defn render-file-item
   [renderer {:keys [value]}]
-  (config! renderer :text (:_id value)))
+  (config! renderer
+          :text (:_id value)
+          ;;:icon default-thumbnail
+          ))
 
 (defn make-frame []
   (frame
-   :title "File Explorer"
-   :width 500
-   :height 500
+   :title "Keyword Explorer"
+   :width 800
+   :height 600
    :content
 
-   (left-right-split
-    (scrollable (tree    :id :tree :model tree-model :renderer render-file-item))
-    (scrollable
-     ;;(label :icon (File. "/Users/iain/Pictures/Published/thumbs/2015/11/06-Carrot-and-MyMy/DIW_6225.jpg") )
-     (listbox :id :list :renderer render-file-item)
-     )
-    :divider-location 1/3)))
+   (border-panel
+    :center (left-right-split
+             (scrollable (tree    :id :tree :model tree-model :renderer render-file-item))
+             (scrollable
+              (label :id :image :icon  default-thumbnail))
+             :divider-location 1/3)
+    :south  (label :id :status :text "Ready"))))
 
 (defn -main [& args]
   (invoke-later
@@ -78,10 +83,10 @@
      (listen
       (select f [:#tree]) :selection
       (fn [e]
-        (if-let [dir (last (selection e))]
+        (if-let [kw (last (selection e))]
           (let
-            [files (get-children dir)]
-            (config! (select f [:#list]) :model files)
+            [files (get-children kw)]
+            (config! (select f [:#image]) :icon (sample-thumbnail (:_id kw)))
             ))))
      (-> f
          pack!
