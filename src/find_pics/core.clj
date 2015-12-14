@@ -1,24 +1,29 @@
 (ns find-pics.core
-  (:use [seesaw core tree])
+  (:use [seesaw core tree]
+        [find-images.core :exclude (-main)])
   (:import [java.io File])
   (:require
    [monger.collection :as mc]
    [monger.core :as mg]
-   [monger.operators :refer :all])
+   [monger.operators :refer :all]
+   )
   (:gen-class))
 
 (def database "soulflyer")
 (def keyword-collection "keywords")
 (def preferences-collection "preferences")
+(def images-collection "images")
 (def connection (mg/connect))
 (def db (mg/get-db connection database))
 
 (def thumbnail-dir
   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-directory"} ))))
 (def default-thumbnail
-  (File. (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-default"})))))
+  (File.
+   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-default"})))))
 (def alternate-thumbnail
-    (File. (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-alternate"})))))
+  (File.
+   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-alternate"})))))
 
 (defn thumbnail-file
   "given a string representing an image, returns the File. containing the thumbnail"
@@ -29,13 +34,20 @@
   [keyword-name]
   (first (mc/find-maps db keyword-collection {:_id keyword-name})))
 
+(defn get-best-image
+  [given-keyword]
+  (thumbnail-file
+   (image-path
+    (last
+     (sort-by :Rating (find-images database images-collection :Keywords given-keyword))))))
+
 (defn sample-thumbnail
   "given a keyword returns the thumbnail image sample File."
   [given-keyword]
   (let [kw (get-keyword given-keyword)]
     (if (:sample kw)
       (thumbnail-file (:sample kw))
-      alternate-thumbnail)))
+      (get-best-image given-keyword))))
 
 (defn branch?
   [keyword-node]
