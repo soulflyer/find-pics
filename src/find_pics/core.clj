@@ -1,12 +1,10 @@
 (ns find-pics.core
-  (:use [seesaw core tree]
-        [find-images.core :exclude (-main)])
-  (:import [java.io File])
-  (:require
-   [monger.collection :as mc]
-   [monger.core :as mg]
-   [monger.operators :refer :all]
-   )
+  (:use     [seesaw core tree]
+            [find-images.core :exclude (-main)])
+  (:import  [java.io File])
+  (:require [monger.collection :as mc]
+            [monger.core :as mg]
+            [monger.operators :refer :all])
   (:gen-class))
 
 (def database "soulflyer")
@@ -76,16 +74,22 @@
 (defn make-frame []
   (frame
    :title "Keyword Explorer"
-   :width 800
-   :height 600
+   :size [1400 :by 800]
+   ;; :width 800
+   ;; :height 600
    :content
 
    (border-panel
     :center (left-right-split
              (scrollable (tree    :id :tree :model tree-model :renderer render-file-item))
              (scrollable
-              (label :id :image :icon  default-thumbnail))
-             :divider-location 1/3)
+              (label :id :image
+                     :icon alternate-thumbnail
+                     :text "errmmmmm"
+                     :valign :top
+                     :v-text-position :bottom
+                     :h-text-position :center))
+             :divider-location 7/8)
     :south  (label :id :status :text "Ready"))))
 
 (defn -main [& args]
@@ -98,8 +102,5 @@
         (if-let [kw (last (selection e))]
           (let
             [files (get-children kw)]
-            (config! (select f [:#image]) :icon (sample-thumbnail (:_id kw)))
-            ))))
-     (-> f
-         pack!
-         show!))))
+            (config! (select f [:#image]) :icon (sample-thumbnail (:_id kw)))))))
+     (show! f))))
