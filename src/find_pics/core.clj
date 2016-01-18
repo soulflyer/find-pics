@@ -3,6 +3,7 @@
   (:require [image-lib.core :refer [find-images
                                     image-path
                                     get-best-image]]
+            [clojure.string :refer [join]]
             [monger
              [collection :as mc]
              [core :as mg]]
@@ -97,26 +98,16 @@
               (label :id :image
                      :icon alternate-thumbnail
                      :text "errmmmmm, no"
-                     :valign :top
+                     :valign :center
+                     :halign :center
                      :v-text-position :bottom
                      :h-text-position :center)
               (scrollable
-               (label :id :details
-                      :text "details here"))
-              :divider-location 1/5)
+               (listbox :id :details
+                        :model ["details here"]))
+              :divider-location 1/4)
              :divider-location 7/8)
     :south  (label :id :status :text "Ready"))))
-
-(defn make-frame2 []
-  (frame
-   :title "Keyword Explorer"
-   :size [1400 :by 800]
-   :content (scrollable
-             ;; (label :text "uh?")
-             (tree    :id :tree
-                      :model tree-model
-                      :renderer render-file-item)
-             )))
 
 
 (defn details-handler
@@ -126,15 +117,19 @@
 (defn -main [& args]
   (invoke-later
    (let [f (make-frame)
-         quit-handler (fn [e] (hide! f)) ;;(fn [e] (alert "Bye"))
-         handler (fn [e] ;;(alert "Pressed enter")
-                   (config!
-                    (select f [:#image])
-                    :text
-                    ;;"ch-ch-ch-changes"
-                    (:_id (last (selection (select f [:#tree]))))
-                    ))]
-     (map-key f "ENTER" handler)
+         quit-handler    (fn [e] (hide! f))
+         details-handler (fn [e]
+                           (let [details          (select f [:#details])
+                                 keyword-tree     (select f [:#tree])
+                                 selected-keyword (:_id (last (selection keyword-tree)))
+                                 images           (find-images
+                                                   database images-collection
+                                                   "Keywords" selected-keyword)
+                                 image-paths      (map image-path images)]
+                             (config! details
+                                      :model image-paths
+                                      )))]
+     (map-key f "ENTER" details-handler)
      (map-key f "Q" quit-handler)
      (listen
       (select f [:#tree])
