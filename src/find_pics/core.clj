@@ -106,30 +106,26 @@
                (listbox :id :details
                         :model ["details here"]))
               :divider-location 1/4)
-             :divider-location 7/8)
+             :divider-location 4/5)
     :south  (label :id :status :text "Ready"))))
 
 
-(defn details-handler
-  [e]
-  (alert "Pressed ENTER"))
+(defn fill-details
+  [f details keyword-tree]
+  (let [selected-keyword (:_id (last (selection keyword-tree)))
+        images           (find-images database images-collection
+                                      "Keywords" selected-keyword)
+        image-paths      (map image-path images)]
+    (config! details :model image-paths)))
 
 (defn -main [& args]
   (invoke-later
-   (let [f (make-frame)
+   (let [f               (make-frame)
+         details         (select f [:#details])
+         keyword-tree    (select f [:#tree])
          quit-handler    (fn [e] (hide! f))
-         details-handler (fn [e]
-                           (let [details          (select f [:#details])
-                                 keyword-tree     (select f [:#tree])
-                                 selected-keyword (:_id (last (selection keyword-tree)))
-                                 images           (find-images
-                                                   database images-collection
-                                                   "Keywords" selected-keyword)
-                                 image-paths      (map image-path images)]
-                             (config! details
-                                      :model image-paths
-                                      )))]
-     (map-key f "ENTER" details-handler)
+         details-handler (fn [e] (fill-details f details keyword-tree))]
+     ;; (map-key f "ENTER" details-handler)
      (map-key f "Q" quit-handler)
      (listen
       (select f [:#tree])
@@ -139,7 +135,6 @@
           (let [files (get-children kw)]
             (config! (select f [:#image])
                      :icon (sample-thumbnail (:_id kw))
-                     :text (:_id kw)
-                     ;;(find-images database images-collection "Keywords" (:_id kw))
-                     )))))
+                     :text (:_id kw))
+            (fill-details f details keyword-tree)))))
      (show! f))))
