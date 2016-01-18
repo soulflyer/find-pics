@@ -93,13 +93,17 @@
               (tree    :id :tree
                        :model tree-model
                        :renderer render-file-item))
-             (scrollable
+             (top-bottom-split
               (label :id :image
                      :icon alternate-thumbnail
                      :text "errmmmmm, no"
                      :valign :top
                      :v-text-position :bottom
-                     :h-text-position :center))
+                     :h-text-position :center)
+              (scrollable
+               (label :id :details
+                      :text "details here"))
+              :divider-location 1/5)
              :divider-location 7/8)
     :south  (label :id :status :text "Ready"))))
 
@@ -122,8 +126,16 @@
 (defn -main [& args]
   (invoke-later
    (let [f (make-frame)
-         handler (fn [e] (alert "pressed key"))]
-     (map-key f "ENTER" details-handler)
+         quit-handler (fn [e] (hide! f)) ;;(fn [e] (alert "Bye"))
+         handler (fn [e] ;;(alert "Pressed enter")
+                   (config!
+                    (select f [:#image])
+                    :text
+                    ;;"ch-ch-ch-changes"
+                    (:_id (last (selection (select f [:#tree]))))
+                    ))]
+     (map-key f "ENTER" handler)
+     (map-key f "Q" quit-handler)
      (listen
       (select f [:#tree])
       :selection
@@ -132,6 +144,7 @@
           (let [files (get-children kw)]
             (config! (select f [:#image])
                      :icon (sample-thumbnail (:_id kw))
-                     ;; :text (find-images database images-collection "Keywords" (:_id kw))
+                     :text (:_id kw)
+                     ;;(find-images database images-collection "Keywords" (:_id kw))
                      )))))
      (show! f))))
