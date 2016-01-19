@@ -82,13 +82,9 @@
   (frame
    :title "Keyword Explorer"
    :size [1400 :by 800]
-   ;;:listen [:key-typed keypress]
-   ;; :width 800
-   ;; :height 600
    :content
 
    (border-panel
-    ;; :listen [:key-typed keypress]
     :center (left-right-split
              (scrollable
               (tree    :id :tree
@@ -111,30 +107,39 @@
 
 
 (defn fill-details
-  [f details keyword-tree]
+  [details keyword-tree]
   (let [selected-keyword (:_id (last (selection keyword-tree)))
         images           (find-images database images-collection
                                       "Keywords" selected-keyword)
         image-paths      (map image-path images)]
     (config! details :model image-paths)))
 
+(defn fill-image
+  [image-pane image-list]
+  (let [selected-image (selection image-list)]
+    (config! image-pane :icon (thumbnail-file selected-image))))
+
 (defn -main [& args]
   (invoke-later
    (let [f               (make-frame)
          details         (select f [:#details])
+         image-pane      (select f [:#image])
          keyword-tree    (select f [:#tree])
          quit-handler    (fn [e] (hide! f))
-         details-handler (fn [e] (fill-details f details keyword-tree))]
-     ;; (map-key f "ENTER" details-handler)
+         ;; details-handler (fn [e] (fill-details details keyword-tree))
+         image-handler   (fn [e] (fill-image image-pane details))]
+     ;; (map-key f "ENTER" image-handler)
      (map-key f "Q" quit-handler)
-     (listen
-      (select f [:#tree])
-      :selection
-      (fn [e]
-        (if-let [kw (last (selection e))]
-          (let [files (get-children kw)]
-            (config! (select f [:#image])
-                     :icon (sample-thumbnail (:_id kw))
-                     :text (:_id kw))
-            (fill-details f details keyword-tree)))))
+     (listen keyword-tree
+             :selection
+             (fn [e]
+               (if-let [kw (last (selection e))]
+                 (let [files (get-children kw)]
+                   (config! image-pane
+                            :icon (sample-thumbnail (:_id kw))
+                            :text (:_id kw))
+                   (fill-details details keyword-tree)))))
+     (listen details
+             :selection
+             image-handler)
      (show! f))))
