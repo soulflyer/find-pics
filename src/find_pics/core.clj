@@ -4,6 +4,7 @@
                                     image-path
                                     get-best-image]]
             [clojure.string :refer [join]]
+            [clojure.java.shell :refer [sh]]
             [monger
              [collection :as mc]
              [core :as mg]]
@@ -23,6 +24,13 @@
 
 (def thumbnail-dir
   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-directory"} ))))
+(def medium-dir
+  (:path (first (mc/find-maps db preferences-collection {:_id "medium-directory"}))))
+(def large-dir
+  (:path (first (mc/find-maps db preferences-collection {:_id "large-directory"}))))
+(def fullsize-dir
+  (:path (first (mc/find-maps db preferences-collection {:_id "fullsize-directory"}))))
+
 (def default-thumbnail
   (File.
    (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-default"})))))
@@ -34,6 +42,18 @@
   "given a string representing an image, returns the File. containing the thumbnail"
   [image-path]
   (File. (str thumbnail-dir "/" image-path)))
+(defn medium-file
+  "given a string representing an image, returns the File. containing the medium version"
+  [image-path]
+  (File. (str medium-dir "/" image-path)))
+(defn large-file
+  "given a string representing an image, returns the File. containing the large version"
+  [image-path]
+  (File. (str large-dir "/" image-path)))
+(defn fullsize-file
+  "given a string representing an image, returns the File. containing the fullsize version"
+  [image-path]
+  (File. (str fullsize-dir "/" image-path)))
 
 (defn get-keyword
   [keyword-name]
@@ -121,15 +141,26 @@
 
 (defn -main [& args]
   (invoke-later
-   (let [f               (make-frame)
-         details         (select f [:#details])
-         image-pane      (select f [:#image])
-         keyword-tree    (select f [:#tree])
-         quit-handler    (fn [e] (hide! f))
+   (let [f                (make-frame)
+         details          (select f [:#details])
+         image-pane       (select f [:#image])
+         keyword-tree     (select f [:#tree])
+         quit-handler     (fn [e] (hide! f))
+         test-handler     (fn [e] (alert "Test"))
+         fullsize-handler (fn [e] (sh "open" (str (fullsize-file (selection details)))))
+         large-handler    (fn [e] (sh "open" (str (large-file    (selection details)))))
+         medium-handler   (fn [e] (sh "open" (str (medium-file   (selection details)))))
+
          ;; details-handler (fn [e] (fill-details details keyword-tree))
          image-handler   (fn [e] (fill-image image-pane details))]
      ;; (map-key f "ENTER" image-handler)
+     (map-key f "T" test-handler)
      (map-key f "Q" quit-handler)
+     (map-key f "F" fullsize-handler)
+     (map-key f "L" large-handler)
+     (map-key f "M" medium-handler)
+     ;;(map-key f "O" open-handler)
+     (map-key f "shift O" test-handler)
      (listen keyword-tree
              :selection
              (fn [e]
