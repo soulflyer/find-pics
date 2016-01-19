@@ -12,7 +12,7 @@
              [core :refer :all]
              [tree :refer :all]
              [keymap :refer :all]])
-;;  (:gen-class)
+  (:gen-class)
   )
 
 (def database "soulflyer")
@@ -30,6 +30,9 @@
   (:path (first (mc/find-maps db preferences-collection {:_id "large-directory"}))))
 (def fullsize-dir
   (:path (first (mc/find-maps db preferences-collection {:_id "fullsize-directory"}))))
+
+(def external-viewer
+  (:path (first (mc/find-maps db preferences-collection {:_id "external-viewer"}))))
 
 (def default-thumbnail
   (File.
@@ -145,15 +148,23 @@
          details          (select f [:#details])
          image-pane       (select f [:#image])
          keyword-tree     (select f [:#tree])
+         selected-image   (fn [] (let [sel (selection details)]
+                                  (if sel
+                                    sel
+                                    (get-best-image
+                                     database
+                                     images-collection
+                                     (:_id (last (selection keyword-tree)))))))
          quit-handler     (fn [e] (hide! f))
-         test-handler     (fn [e] (alert "Test"))
-         fullsize-handler (fn [e] (sh "open" (str (fullsize-file (selection details)))))
-         large-handler    (fn [e] (sh "open" (str (large-file    (selection details)))))
-         medium-handler   (fn [e] (sh "open" (str (medium-file   (selection details)))))
+         test-handler     (fn [e] (alert (str (fullsize-file (selected-image)))))
+         fullsize-handler (fn [e]
+                            (sh external-viewer (str (fullsize-file (selected-image)))))
+         large-handler    (fn [e]
+                            (sh external-viewer (str (large-file    (selected-image)))))
+         medium-handler   (fn [e]
+                            (sh external-viewer (str (medium-file   (selected-image)))))
+         image-handler    (fn [e] (fill-image image-pane details))]
 
-         ;; details-handler (fn [e] (fill-details details keyword-tree))
-         image-handler   (fn [e] (fill-image image-pane details))]
-     ;; (map-key f "ENTER" image-handler)
      (map-key f "T" test-handler)
      (map-key f "Q" quit-handler)
      (map-key f "F" fullsize-handler)
