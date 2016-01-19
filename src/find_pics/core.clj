@@ -102,31 +102,35 @@
       (prn "some other key"))))
 
 (defn make-frame []
-  (frame
-   :title "Keyword Explorer"
-   :size [1400 :by 800]
-   :content
-
-   (border-panel
-    :center (left-right-split
-             (scrollable
-              (tree    :id :tree
-                       :model tree-model
-                       :renderer render-file-item))
-             (top-bottom-split
-              (label :id :image
-                     :icon alternate-thumbnail
-                     :text "errmmmmm, no"
-                     :valign :center
-                     :halign :center
-                     :v-text-position :bottom
-                     :h-text-position :center)
-              (scrollable
-               (listbox :id :details
-                        :model ["details here"]))
-              :divider-location 1/4)
-             :divider-location 4/5)
-    :south  (label :id :status :text "Ready"))))
+  (let [image-panel   (label    :id :image
+                                :icon alternate-thumbnail
+                                :text "errmmmmm, no"
+                                :valign :center
+                                :halign :center
+                                :v-text-position :bottom
+                                :h-text-position :center)
+        details-panel (scrollable
+                       (listbox :id :details
+                                :model ["details here"]))
+        tree-panel    (scrollable
+                       (tree    :id :tree
+                                :model tree-model
+                                :renderer render-file-item))
+        ]
+    (frame
+     :title "Keyword Explorer"
+     :size [1400 :by 800]
+     :content
+     (border-panel
+      :center (left-right-split
+               ;; tree-panel
+               (top-bottom-split
+                image-panel
+                details-panel
+                :divider-location 1/4)
+               tree-panel
+               :divider-location 1/5)
+      :south  (label :id :status :text "Ready")))))
 
 
 (defn fill-details
