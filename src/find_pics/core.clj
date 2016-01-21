@@ -2,7 +2,7 @@
   (:import java.io.File)
   (:require [image-lib.core :refer [find-images
                                     image-path
-                                    get-best-image]]
+                                    best-image]]
             [clojure.string :refer [join]]
             [clojure.java.shell :refer [sh]]
             [monger
@@ -69,11 +69,11 @@
     (thumbnail-file
      (if (:sample kw)
        (:sample kw)
-       (get-best-image database images-collection given-keyword)))))
+       (best-image db images-collection keyword-collection given-keyword)))))
 
 (defn get-image-list
   [given-keyword]
-  (find-images database images-collection "Keywords" given-keyword))
+  (find-images db images-collection "Keywords" given-keyword))
 
 (defn branch?
   [keyword-node]
@@ -115,8 +115,7 @@
         tree-panel    (scrollable
                        (tree    :id :tree
                                 :model tree-model
-                                :renderer render-file-item))
-        ]
+                                :renderer render-file-item))]
     (frame
      :title "Keyword Explorer"
      :size [1400 :by 800]
@@ -136,7 +135,7 @@
 (defn fill-details
   [details keyword-tree]
   (let [selected-keyword (:_id (last (selection keyword-tree)))
-        images           (find-images database images-collection
+        images           (find-images db images-collection
                                       "Keywords" selected-keyword)
         image-paths      (map image-path images)]
     (config! details :model image-paths)))
@@ -148,15 +147,16 @@
 
 (defn -main [& args]
   (invoke-later
-   (let [f                (make-frame)
+   (let [
+         f                (make-frame)
          details          (select f [:#details])
          image-pane       (select f [:#image])
          keyword-tree     (select f [:#tree])
          selected-image   (fn [] (let [sel (selection details)]
                                   (if sel
                                     sel
-                                    (get-best-image
-                                     database
+                                    (best-image
+                                     db
                                      images-collection
                                      (:_id (last (selection keyword-tree)))))))
          quit-handler     (fn [e] (hide! f))
@@ -169,6 +169,7 @@
                             (sh external-viewer (str (medium-file   (selected-image)))))
          image-handler    (fn [e] (fill-image image-pane details))]
 
+     (native!)
      (map-key f "T" test-handler)
      (map-key f "Q" quit-handler)
      (map-key f "F" fullsize-handler)
