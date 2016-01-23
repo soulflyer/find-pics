@@ -2,7 +2,8 @@
   (:import java.io.File)
   (:require [image-lib.core :refer [find-images
                                     image-path
-                                    best-image]]
+                                    best-image
+                                    preference]]
             [clojure.string :refer [join]]
             [clojure.java.shell :refer [sh]]
             [monger
@@ -22,24 +23,14 @@
 (def connection (mg/connect))
 (def db (mg/get-db connection database))
 
-(def thumbnail-dir
-  (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-directory"} ))))
-(def medium-dir
-  (:path (first (mc/find-maps db preferences-collection {:_id "medium-directory"}))))
-(def large-dir
-  (:path (first (mc/find-maps db preferences-collection {:_id "large-directory"}))))
-(def fullsize-dir
-  (:path (first (mc/find-maps db preferences-collection {:_id "fullsize-directory"}))))
+(def thumbnail-dir   (preference db "preferences" "thumbnail-directory"))
+(def medium-dir      (preference db "preferences"    "medium-directory"))
+(def large-dir       (preference db "preferences"     "large-directory"))
+(def fullsize-dir    (preference db "preferences"  "fullsize-directory"))
+(def external-viewer (preference db "preferences" "external-viewer"))
 
-(def external-viewer
-  (:path (first (mc/find-maps db preferences-collection {:_id "external-viewer"}))))
-
-(def default-thumbnail
-  (File.
-   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-default"})))))
-(def alternate-thumbnail
-  (File.
-   (:path (first (mc/find-maps db preferences-collection {:_id "thumbnail-alternate"})))))
+(def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
+(def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
 
 (defn thumbnail-file
   "given a string representing an image, returns the File. containing the thumbnail"
@@ -69,7 +60,7 @@
     (thumbnail-file
      (if (:sample kw)
        (:sample kw)
-       (best-image db images-collection keyword-collection given-keyword)))))
+       (image-path (best-image db images-collection keyword-collection given-keyword))))))
 
 (defn get-image-list
   [given-keyword]
@@ -155,10 +146,11 @@
          selected-image   (fn [] (let [sel (selection details)]
                                   (if sel
                                     sel
-                                    (best-image
-                                     db
-                                     images-collection
-                                     (:_id (last (selection keyword-tree)))))))
+                                    (image-path
+                                     (best-image
+                                      db
+                                      images-collection
+                                      (:_id (last (selection keyword-tree))))))))
          quit-handler     (fn [e] (hide! f))
          test-handler     (fn [e] (alert (str (fullsize-file (selected-image)))))
          fullsize-handler (fn [e]
