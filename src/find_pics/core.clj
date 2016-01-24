@@ -1,6 +1,7 @@
 (ns find-pics.core
   (:import java.io.File)
   (:require [image-lib.core :refer [find-images
+                                    find-all-images
                                     image-path
                                     best-image
                                     preference]]
@@ -32,22 +33,10 @@
 (def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
 (def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
 
-(defn thumbnail-file
-  "given a string representing an image, returns the File. containing the thumbnail"
-  [image-path]
-  (File. (str thumbnail-dir "/" image-path)))
-(defn medium-file
-  "given a string representing an image, returns the File. containing the medium version"
-  [image-path]
-  (File. (str medium-dir "/" image-path)))
-(defn large-file
-  "given a string representing an image, returns the File. containing the large version"
-  [image-path]
-  (File. (str large-dir "/" image-path)))
-(defn fullsize-file
-  "given a string representing an image, returns the File. containing the fullsize version"
-  [image-path]
-  (File. (str fullsize-dir "/" image-path)))
+(defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
+(defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
+(defn large-file     [image-path] (File. (str large-dir "/" image-path)))
+(defn fullsize-file  [image-path] (File. (str fullsize-dir "/" image-path)))
 
 (defn get-keyword
   [keyword-name]
@@ -58,7 +47,7 @@
   [given-keyword]
   (let [kw (get-keyword given-keyword)]
     (thumbnail-file
-     (if (:sample kw)
+     (or
        (:sample kw)
        (image-path (best-image db images-collection keyword-collection given-keyword))))))
 
@@ -131,6 +120,14 @@
         image-paths      (map image-path images)]
     (config! details :model image-paths)))
 
+;; (defn fill-all-details
+;;   [selected-keyword]
+;;   (let [images (find-images db images-collection
+;;                             "Keywords" selected-keyword)
+;;         image-paths (map image-path images)]
+;;     (config! details :model image-paths))
+;;   )
+
 (defn fill-image
   [image-pane image-list]
   (let [selected-image (selection image-list)]
@@ -145,13 +142,20 @@
          keyword-tree     (select f [:#tree])
          selected-keyword (fn [] (:_id (last (selection keyword-tree))))
          selected-image   (fn [] (let [sel (selection details)]
-                                  (if sel
-                                    sel
-                                    (image-path
-                                     (best-image
-                                      db
-                                      images-collection
-                                      (selected-keyword))))))
+                                  (or
+                                   sel
+                                   (image-path
+                                    (best-image
+                                     db
+                                     images-collection
+                                     (selected-keyword))))))
+
+         fill-all-details (fn [keyword]
+                            (let [images (find-all-images db images-collection
+                                                          keyword-collection keyword)
+                                  image-paths (map image-path images)]
+                              (config! details :model image-paths)))
+
          quit-handler     (fn [e] (hide! f))
          test-handler     (fn [e] (alert (fullsize-file (selected-image))))
          save-handler     (fn [e] (mc/update-by-id
@@ -159,16 +163,15 @@
                                   (selected-keyword)
                                   (conj {:sample (selected-image)}
                                         {:sub (:sub (mc/find-map-by-id
-                                                db
-                                                keyword-collection
-                                                (selected-keyword)))}))
-)
-         fullsize-handler (fn [e]
-                            (sh external-viewer (fullsize-file (selected-image))))
-         large-handler    (fn [e]
-                            (sh external-viewer (str (large-file    (selected-image)))))
-         medium-handler   (fn [e]
-                            (sh external-viewer (str (medium-file   (selected-image)))))
+                                                     db
+                                                     keyword-collection
+                                                     (selected-keyword)))})))
+
+         all-handler      (fn [e] (fill-all-details (selected-keyword)))
+
+         fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
+         large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
+         medium-handler   (fn [e] (sh external-viewer (str (medium-file   (selected-image)))))
          image-handler    (fn [e] (fill-image image-pane details))]
 
      (native!)
@@ -178,6 +181,7 @@
      (map-key f "L" large-handler)
      (map-key f "M" medium-handler)
      ;;(map-key f "O" open-handler)
+     (map-key f "A" all-handler)
      (map-key f "shift O" test-handler)
      (map-key f "S" save-handler)
      (listen keyword-tree
@@ -188,7 +192,9 @@
                    (config! image-pane
                             :icon (sample-thumbnail (:_id kw))
                             :text (:_id kw))
-                   (fill-details details keyword-tree)))))
+                   (fill-details details keyword-tree)
+                   ;; (fill-all-details (selected-keyword))
+                   ))))
      (listen details
              :selection
              image-handler)
