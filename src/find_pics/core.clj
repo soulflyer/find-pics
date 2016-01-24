@@ -143,6 +143,7 @@
          details          (select f [:#details])
          image-pane       (select f [:#image])
          keyword-tree     (select f [:#tree])
+         selected-keyword (fn [] (:_id (last (selection keyword-tree))))
          selected-image   (fn [] (let [sel (selection details)]
                                   (if sel
                                     sel
@@ -150,11 +151,20 @@
                                      (best-image
                                       db
                                       images-collection
-                                      (:_id (last (selection keyword-tree))))))))
+                                      (selected-keyword))))))
          quit-handler     (fn [e] (hide! f))
-         test-handler     (fn [e] (alert (str (fullsize-file (selected-image)))))
+         test-handler     (fn [e] (alert (fullsize-file (selected-image))))
+         save-handler     (fn [e] (mc/update-by-id
+                                  db keyword-collection
+                                  (selected-keyword)
+                                  (conj {:sample (selected-image)}
+                                        {:sub (:sub (mc/find-map-by-id
+                                                db
+                                                keyword-collection
+                                                (selected-keyword)))}))
+)
          fullsize-handler (fn [e]
-                            (sh external-viewer (str (fullsize-file (selected-image)))))
+                            (sh external-viewer (fullsize-file (selected-image))))
          large-handler    (fn [e]
                             (sh external-viewer (str (large-file    (selected-image)))))
          medium-handler   (fn [e]
@@ -169,6 +179,7 @@
      (map-key f "M" medium-handler)
      ;;(map-key f "O" open-handler)
      (map-key f "shift O" test-handler)
+     (map-key f "S" save-handler)
      (listen keyword-tree
              :selection
              (fn [e]
