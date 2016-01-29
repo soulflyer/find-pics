@@ -11,4 +11,4 @@
   :main find-pics.core
   :bin {:name "find-pics"
         :bin-path "~/bin"}
-  :jvm-opts ["-Xdock:name=Soulflyer"])
+  :jvm-opts ["-Xdock:name=Image-Search"])

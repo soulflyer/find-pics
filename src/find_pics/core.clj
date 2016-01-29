@@ -29,9 +29,18 @@
 (def large-dir       (preference db "preferences"     "large-directory"))
 (def fullsize-dir    (preference db "preferences"  "fullsize-directory"))
 (def external-viewer (preference db "preferences" "external-viewer"))
+(def window-title    (preference db "preferences" "window-title"))
 
 (def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
 (def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
+
+(def help-text ["H   help screen"
+                "M   open medium size pic in external viewer"
+                "L   open large"
+                "F   open fullsize"
+                "A   display all pic paths including sub keywords"
+                "B   display the 'best' pic for this keyword"
+                "S   save the selected pic as the sample for this keyword"])
 
 (defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
 (defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
@@ -49,7 +58,9 @@
     (thumbnail-file
      (or
        (:sample kw)
-       (image-path (best-image db images-collection keyword-collection given-keyword))))))
+       ;; (image-path (best-image db images-collection keyword-collection given-keyword))
+       (image-path (best-image db images-collection given-keyword))
+       ))))
 
 (defn get-image-list
   [given-keyword]
@@ -74,13 +85,6 @@
   (config! renderer
           :text (:_id value)))
 
-(defn keypress [e]
-  (let [k (.getKeyChar e)]
-    (prn k (type k))
-    (if (= k \newline)
-      (alert "ENTER!")
-      (prn "some other key"))))
-
 (defn make-frame []
   (let [image-panel   (label    :id :image
                                 :icon alternate-thumbnail
@@ -91,13 +95,13 @@
                                 :h-text-position :center)
         details-panel (scrollable
                        (listbox :id :details
-                                :model ["details here"]))
+                                :model help-text))
         tree-panel    (scrollable
                        (tree    :id :tree
                                 :model tree-model
                                 :renderer render-file-item))]
     (frame
-     :title "Keyword Explorer"
+     :title window-title
      :size [1400 :by 800]
      :content
      (border-panel
@@ -108,25 +112,8 @@
                 details-panel
                 :divider-location 1/4)
                tree-panel
-               :divider-location 1/5)
+               :divider-location 1/4)
       :south  (label :id :status :text "Ready")))))
-
-
-(defn fill-details
-  [details keyword-tree]
-  (let [selected-keyword (:_id (last (selection keyword-tree)))
-        images           (find-images db images-collection
-                                      "Keywords" selected-keyword)
-        image-paths      (map image-path images)]
-    (config! details :model image-paths)))
-
-;; (defn fill-all-details
-;;   [selected-keyword]
-;;   (let [images (find-images db images-collection
-;;                             "Keywords" selected-keyword)
-;;         image-paths (map image-path images)]
-;;     (config! details :model image-paths))
-;;   )
 
 (defn fill-image
   [image-pane image-list]
@@ -144,15 +131,17 @@
          selected-image   (fn [] (let [sel (selection details)]
                                   (or
                                    sel
-                                   (image-path
-                                    (best-image
-                                     db
-                                     images-collection
-                                     (selected-keyword))))))
+                                   (image-path (best-image db images-collection
+                                                           (selected-keyword))))))
 
          fill-all-details (fn [keyword]
                             (let [images (find-all-images db images-collection
                                                           keyword-collection keyword)
+                                  image-paths (map image-path images)]
+                              (config! details :model image-paths)))
+         fill-details     (fn [keyword]
+                            (let [images (find-images db images-collection
+                                                      "Keywords" keyword)
                                   image-paths (map image-path images)]
                               (config! details :model image-paths)))
 
@@ -168,10 +157,18 @@
                                                      (selected-keyword)))})))
 
          all-handler      (fn [e] (fill-all-details (selected-keyword)))
-
+         best-handler     (fn [e]
+                            (config! image-pane
+                                     :icon
+                                     (thumbnail-file
+                                      (image-path
+                                       (best-image db images-collection
+                                                   keyword-collection (selected-keyword))))))
+         help-handler     (fn [e] (config! details :model help-text))
          fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
          large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
          medium-handler   (fn [e] (sh external-viewer (str (medium-file   (selected-image)))))
+         ;; medium-all-handler (fn [e] (sh external-viewer (str (map medium-file   ))))
          image-handler    (fn [e] (fill-image image-pane details))]
 
      (native!)
@@ -182,8 +179,10 @@
      (map-key f "M" medium-handler)
      ;;(map-key f "O" open-handler)
      (map-key f "A" all-handler)
+     (map-key f "B" best-handler)
      (map-key f "shift O" test-handler)
      (map-key f "S" save-handler)
+     (map-key f "H" help-handler)
      (listen keyword-tree
              :selection
              (fn [e]
@@ -192,9 +191,7 @@
                    (config! image-pane
                             :icon (sample-thumbnail (:_id kw))
                             :text (:_id kw))
-                   (fill-details details keyword-tree)
-                   ;; (fill-all-details (selected-keyword))
-                   ))))
+                   (fill-details (selected-keyword))))))
      (listen details
              :selection
              image-handler)
