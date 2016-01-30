@@ -5,7 +5,9 @@
                                     image-path
                                     best-image
                                     preference]]
-            [clojure.string :refer [join]]
+            [clojure.string :refer [split
+                                    join
+                                    replace]]
             [clojure.java.shell :refer [sh]]
             [monger
              [collection :as mc]
@@ -14,8 +16,7 @@
              [core :refer :all]
              [tree :refer :all]
              [keymap :refer :all]])
-  (:gen-class)
-  )
+  (:gen-class))
 
 (def database "soulflyer")
 (def keyword-collection "keywords")
@@ -146,7 +147,12 @@
                               (config! details :model image-paths)))
 
          quit-handler     (fn [e] (hide! f))
-         test-handler     (fn [e] (alert (fullsize-file (selected-image))))
+         test-handler     (fn [e] (alert
+                                  (str
+                                   (split
+                                    (replace
+                                     (str
+                                      (config details :model)) #"[\[\]]" "") #", "))))
          save-handler     (fn [e] (mc/update-by-id
                                   db keyword-collection
                                   (selected-keyword)
@@ -168,7 +174,14 @@
          fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
          large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
          medium-handler   (fn [e] (sh external-viewer (str (medium-file   (selected-image)))))
-         ;; medium-all-handler (fn [e] (sh external-viewer (str (map medium-file   ))))
+         medium-all-handler (fn [e]
+                              (sh "xargs" external-viewer
+                                  :in (join " "
+                                            (map #(str medium-dir "/" %)
+                                                 (split
+                                                  (replace
+                                                   (str (config details :model))
+                                                   #"[\[\]]" "") #", ")))))
          image-handler    (fn [e] (fill-image image-pane details))]
 
      (native!)
@@ -177,10 +190,10 @@
      (map-key f "F" fullsize-handler)
      (map-key f "L" large-handler)
      (map-key f "M" medium-handler)
-     ;;(map-key f "O" open-handler)
+     (map-key f "O" medium-all-handler)
      (map-key f "A" all-handler)
      (map-key f "B" best-handler)
-     (map-key f "shift O" test-handler)
+     (map-key f "shift O" medium-all-handler)
      (map-key f "S" save-handler)
      (map-key f "H" help-handler)
      (listen keyword-tree
