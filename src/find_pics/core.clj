@@ -35,13 +35,16 @@
 (def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
 (def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
 
-(def help-text ["H   help screen"
-                "M   open medium size pic in external viewer"
-                "L   open large"
-                "F   open fullsize"
-                "A   display all pic paths including sub keywords"
-                "B   display the 'best' pic for this keyword"
-                "S   save the selected pic as the sample for this keyword"])
+(def help-text ["h   help screen"
+                "m   open medium size pic in external viewer"
+                "M   open all medium size pics"
+                "l   open large"
+                "L   open all Large"
+                "f   open fullsize"
+                "F   open all fullsize"
+                "a   display all pic paths including sub keywords"
+                "b   display the 'best' pic for this keyword"
+                "s   save the selected pic as the sample for this keyword"])
 
 (defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
 (defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
@@ -116,11 +119,6 @@
                :divider-location 1/4)
       :south  (label :id :status :text "Ready")))))
 
-(defn fill-image
-  [image-pane image-list]
-  (let [selected-image (selection image-list)]
-    (config! image-pane :icon (thumbnail-file selected-image))))
-
 (defn -main [& args]
   (invoke-later
    (let [
@@ -134,7 +132,6 @@
                                    sel
                                    (image-path (best-image db images-collection
                                                            (selected-keyword))))))
-
          fill-all-details (fn [keyword]
                             (let [images (find-all-images db images-collection
                                                           keyword-collection keyword)
@@ -145,6 +142,15 @@
                                                       "Keywords" keyword)
                                   image-paths (map image-path images)]
                               (config! details :model image-paths)))
+
+         open-all         (fn [size-dir]
+                            (sh "xargs" external-viewer
+                                :in (join " "
+                                          (map #(str size-dir "/" %)
+                                               (split
+                                                (replace
+                                                 (str (config details :model))
+                                                 #"[\[\]]" "") #", ")))))
 
          quit-handler     (fn [e] (hide! f))
          test-handler     (fn [e] (alert
@@ -174,15 +180,11 @@
          fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
          large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
          medium-handler   (fn [e] (sh external-viewer (str (medium-file   (selected-image)))))
-         medium-all-handler (fn [e]
-                              (sh "xargs" external-viewer
-                                  :in (join " "
-                                            (map #(str medium-dir "/" %)
-                                                 (split
-                                                  (replace
-                                                   (str (config details :model))
-                                                   #"[\[\]]" "") #", ")))))
-         image-handler    (fn [e] (fill-image image-pane details))]
+         all-large-handler    (fn [e] (open-all large-dir))
+         all-medium-handler   (fn [e] (open-all medium-dir))
+         all-fullsize-handler (fn [e] (open-all fullsize-dir))
+         image-handler    (fn [e] (config! image-pane
+                                          :icon (thumbnail-file (selection details)) ))]
 
      (native!)
      (map-key f "T" test-handler)
@@ -190,12 +192,14 @@
      (map-key f "F" fullsize-handler)
      (map-key f "L" large-handler)
      (map-key f "M" medium-handler)
-     (map-key f "O" medium-all-handler)
+     (map-key f "shift M" all-medium-handler)
+     (map-key f "shift L" all-large-handler)
+     (map-key f "shift F" all-fullsize-handler)
      (map-key f "A" all-handler)
      (map-key f "B" best-handler)
-     (map-key f "shift O" medium-all-handler)
      (map-key f "S" save-handler)
      (map-key f "H" help-handler)
+
      (listen keyword-tree
              :selection
              (fn [e]
