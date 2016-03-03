@@ -18,7 +18,7 @@
              [keymap :refer :all]])
   (:gen-class))
 
-(def database "soulflyer")
+(def database "photos")
 (def keyword-collection "keywords")
 (def preferences-collection "preferences")
 (def images-collection "images")
