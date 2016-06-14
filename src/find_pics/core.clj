@@ -192,7 +192,9 @@
          image-handler    (fn [e] (config! image-pane
                                           :icon (thumbnail-file (selection details)) ))
          add-keyword-handler  (fn [e] (let [ new-keyword "New Keyword"]
-                                       (add-keyword (selected-keyword) new-keyword )))]
+                                       (add-keyword
+                                        db keyword-collection
+                                        (input e "Enter new keyword") (selected-keyword))))]
 
      (native!)
      (map-key f "T" test-handler)
