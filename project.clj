@@ -9,6 +9,6 @@
                  [com.novemberain/monger "3.0.1"]
                  [org.clojure/tools.cli "0.3.3"]]
   :main find-pics.core
-  :bin {:name "keyword-search"
+  :bin {:name "keywords"
         :bin-path "~/bin"}
-  :jvm-opts ["-Xdock:name=Keyword-Search"])
+  :jvm-opts ["-Xdock:name=Keywords"])
