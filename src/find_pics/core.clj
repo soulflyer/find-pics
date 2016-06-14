@@ -4,24 +4,29 @@
                                     find-all-images
                                     image-path
                                     best-image
-                                    preference]]
+                                    preference
+                                    add-keyword
+                                    move-keyword
+                                    delete-keyword
+                                    find-parents]]
             [clojure.string :refer [split
                                     join
                                     replace]]
             [clojure.java.shell :refer [sh]]
             [monger
              [collection :as mc]
-             [core :as mg]]
+             [core :as mg]
+             [operators :refer :all]]
             [seesaw
              [core :refer :all]
              [tree :refer :all]
              [keymap :refer :all]])
   (:gen-class))
 
-(def database "photos")
-(def keyword-collection "keywords")
+(def database                    "photos")
+(def keyword-collection        "keywords")
 (def preferences-collection "preferences")
-(def images-collection "images")
+(def images-collection           "images")
 (def connection (mg/connect))
 (def db (mg/get-db connection database))
 
@@ -29,8 +34,8 @@
 (def medium-dir      (preference db "preferences"    "medium-directory"))
 (def large-dir       (preference db "preferences"     "large-directory"))
 (def fullsize-dir    (preference db "preferences"  "fullsize-directory"))
-(def external-viewer (preference db "preferences" "external-viewer"))
-(def window-title    (preference db "preferences" "window-title"))
+(def external-viewer (preference db "preferences"     "external-viewer"))
+(def window-title    (preference db "preferences"        "window-title"))
 
 (def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
 (def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
@@ -78,7 +83,7 @@
   [keyword]
   (map get-keyword (keyword :sub)))
 
-(def tree-model
+(defn load-model []
   (simple-tree-model
    branch?
    get-children
@@ -92,7 +97,7 @@
 (defn make-frame []
   (let [image-panel   (label    :id :image
                                 :icon alternate-thumbnail
-                                :text "errmmmmm, no"
+                                :text "keyword browser"
                                 :valign :center
                                 :halign :center
                                 :v-text-position :bottom
@@ -102,7 +107,7 @@
                                 :model help-text))
         tree-panel    (scrollable
                        (tree    :id :tree
-                                :model tree-model
+                                :model (load-model)
                                 :renderer render-file-item))]
     (frame
      :title window-title
@@ -110,7 +115,6 @@
      :content
      (border-panel
       :center (left-right-split
-               ;; tree-panel
                (top-bottom-split
                 image-panel
                 details-panel
@@ -121,8 +125,7 @@
 
 (defn -main [& args]
   (invoke-later
-   (let [
-         f                (make-frame)
+   (let [f                (make-frame)
          details          (select f [:#details])
          image-pane       (select f [:#image])
          keyword-tree     (select f [:#tree])
@@ -169,6 +172,9 @@
                                                      (selected-keyword)))})))
 
          all-handler      (fn [e] (fill-all-details (selected-keyword)))
+         refresh-handler  (fn [e]
+                            (config! keyword-tree
+                                     :model (load-model)))
          best-handler     (fn [e]
                             (config! image-pane
                                      :icon
@@ -184,7 +190,9 @@
          all-medium-handler   (fn [e] (open-all medium-dir))
          all-fullsize-handler (fn [e] (open-all fullsize-dir))
          image-handler    (fn [e] (config! image-pane
-                                          :icon (thumbnail-file (selection details)) ))]
+                                          :icon (thumbnail-file (selection details)) ))
+         add-keyword-handler  (fn [e] (let [ new-keyword "New Keyword"]
+                                       (add-keyword (selected-keyword) new-keyword )))]
 
      (native!)
      (map-key f "T" test-handler)
@@ -199,6 +207,8 @@
      (map-key f "B" best-handler)
      (map-key f "S" save-handler)
      (map-key f "H" help-handler)
+     (map-key f "R" refresh-handler)
+     (map-key f "N" add-keyword-handler)
 
      (listen keyword-tree
              :selection
