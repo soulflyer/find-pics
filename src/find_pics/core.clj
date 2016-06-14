@@ -49,7 +49,10 @@
                 "F   open all fullsize"
                 "a   display all pic paths including sub keywords"
                 "b   display the 'best' pic for this keyword"
-                "s   save the selected pic as the sample for this keyword"])
+                "s   save the selected pic as the sample for this keyword"
+                "d   delete keyword (must have no sub keywords"
+                "D   move keyword"
+                "r   refresh the keyword tree"])
 
 (defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
 (defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
@@ -59,6 +62,13 @@
 (defn get-keyword
   [keyword-name]
   (first (mc/find-maps db keyword-collection {:_id keyword-name})))
+
+(defn safe-delete-keyword
+  "Delete a keyword, but only if it has no sub keywords"
+  [db keyword-collection kw parent]
+  (let [keyword (get-keyword kw)]
+    (if (= 0 (count (:sub keyword)))
+      (delete-keyword db keyword-collection kw parent))))
 
 (defn sample-thumbnail
   "given a keyword returns the thumbnail image sample File."
@@ -194,7 +204,26 @@
          add-keyword-handler  (fn [e] (let [ new-keyword "New Keyword"]
                                        (add-keyword
                                         db keyword-collection
-                                        (input e "Enter new keyword") (selected-keyword))))]
+                                        (input e (str "Enter new keyword under "
+                                                      (selected-keyword)))
+                                        (selected-keyword))))
+         delete-keyword-handler (fn [e]
+                                  (safe-delete-keyword
+                                   db keyword-collection
+                                   (selected-keyword)
+                                   (:_id (first
+                                          (find-parents db keyword-collection
+                                                        (selected-keyword))))))
+         move-keyword-handler (fn [e]
+                                (move-keyword
+                                 db keyword-collection
+                                 (selected-keyword)
+                                 (:_id (first
+                                        (find-parents db keyword-collection
+                                                      (selected-keyword))))
+                                 (input e (str "Move "
+                                               (selected-keyword)
+                                               " to:"))))]
 
      (native!)
      (map-key f "T" test-handler)
@@ -211,6 +240,8 @@
      (map-key f "H" help-handler)
      (map-key f "R" refresh-handler)
      (map-key f "N" add-keyword-handler)
+     (map-key f "D" delete-keyword-handler)
+     (map-key f "shift D" move-keyword-handler)
 
      (listen keyword-tree
              :selection
