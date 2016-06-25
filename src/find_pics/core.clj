@@ -5,13 +5,17 @@
                                     image-path
                                     best-image
                                     preference
+                                    preference!
                                     add-keyword
                                     move-keyword
                                     delete-keyword
-                                    find-parents]]
+                                    find-parents
+                                    all-ids
+                                    used-keywords]]
             [clojure.string :refer [split
                                     join
                                     replace]]
+            [clojure.set    :refer [difference]]
             [clojure.java.shell :refer [sh]]
             [monger
              [collection :as mc]
@@ -50,7 +54,7 @@
                 "a   display all pic paths including sub keywords"
                 "b   display the 'best' pic for this keyword"
                 "s   save the selected pic as the sample for this keyword"
-                "d   delete keyword (must have no sub keywords"
+                "d   delete keyword (must have no sub keywords)"
                 "D   move keyword"
                 "r   refresh the keyword tree"])
 
@@ -62,6 +66,20 @@
 (defn get-keyword
   [keyword-name]
   (first (mc/find-maps db keyword-collection {:_id keyword-name})))
+
+(defn all-keywords
+  []
+  (all-ids db keyword-collection))
+
+(defn rename-keyword
+  "Changes the keyword including any references in parents. Doesn't change the original images"
+  [db keyword-collection old-keyword new-keyword]
+  (let [parents (find-parents db keyword-collection old-keyword)
+        parent  (:_id (first parents))
+        children (:sub (get-keyword old-keyword))]
+    (add-keyword db keyword-collection new-keyword parent)
+    (doall (map #(move-keyword db keyword-collection % old-keyword new-keyword) children))
+    (delete-keyword db keyword-collection old-keyword)))
 
 (defn safe-delete-keyword
   "Delete a keyword, but only if it has no sub keywords"
@@ -214,6 +232,13 @@
                                    (:_id (first
                                           (find-parents db keyword-collection
                                                         (selected-keyword))))))
+         rename-keyword-handler (fn [e]
+                                  (rename-keyword
+                                   db keyword-collection
+                                   (selected-keyword)
+                                   (input e (str "Rename "
+                                                 (selected-keyword)
+                                                 " to:"))))
          move-keyword-handler (fn [e]
                                 (move-keyword
                                  db keyword-collection
@@ -239,6 +264,7 @@
      (map-key f "S" save-handler)
      (map-key f "H" help-handler)
      (map-key f "R" refresh-handler)
+     (map-key f "shift R" rename-keyword-handler)
      (map-key f "N" add-keyword-handler)
      (map-key f "D" delete-keyword-handler)
      (map-key f "shift D" move-keyword-handler)
