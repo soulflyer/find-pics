@@ -9,6 +9,7 @@
                                     add-keyword
                                     move-keyword
                                     delete-keyword
+                                    safe-delete-keyword
                                     rename-keyword
                                     find-parents
                                     all-ids
@@ -74,13 +75,6 @@
   []
   (all-ids db keyword-collection))
 
-(defn safe-delete-keyword
-  "Delete a keyword, but only if it has no sub keywords"
-  [db keyword-collection kw parent]
-  (let [keyword (get-keyword kw)]
-    (if (= 0 (count (:sub keyword)))
-      (delete-keyword db keyword-collection kw parent))))
-
 (defn parent
   "get the parent keyword map"
   [keyword]
@@ -93,9 +87,7 @@
     (thumbnail-file
      (or
        (:sample kw)
-       ;; (image-path (best-image db images-collection keyword-collection given-keyword))
-       (image-path (best-image db images-collection given-keyword))
-       ))))
+       (image-path (best-image db images-collection given-keyword))))))
 
 (defn get-image-list
   [given-keyword]
