@@ -9,6 +9,7 @@
                                     add-keyword
                                     move-keyword
                                     delete-keyword
+                                    rename-keyword
                                     find-parents
                                     all-ids
                                     used-keywords]]
@@ -54,8 +55,10 @@
                 "a   display all pic paths including sub keywords"
                 "b   display the 'best' pic for this keyword"
                 "s   save the selected pic as the sample for this keyword"
+                "n   add new keyword"
                 "d   delete keyword (must have no sub keywords)"
                 "D   move keyword"
+                "R   rename keyword"
                 "r   refresh the keyword tree"])
 
 (defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
@@ -71,22 +74,17 @@
   []
   (all-ids db keyword-collection))
 
-(defn rename-keyword
-  "Changes the keyword including any references in parents. Doesn't change the original images"
-  [db keyword-collection old-keyword new-keyword]
-  (let [parents (find-parents db keyword-collection old-keyword)
-        parent  (:_id (first parents))
-        children (:sub (get-keyword old-keyword))]
-    (add-keyword db keyword-collection new-keyword parent)
-    (doall (map #(move-keyword db keyword-collection % old-keyword new-keyword) children))
-    (delete-keyword db keyword-collection old-keyword)))
-
 (defn safe-delete-keyword
   "Delete a keyword, but only if it has no sub keywords"
   [db keyword-collection kw parent]
   (let [keyword (get-keyword kw)]
     (if (= 0 (count (:sub keyword)))
       (delete-keyword db keyword-collection kw parent))))
+
+(defn parent
+  "get the parent keyword map"
+  [keyword]
+  (first (find-parents db keyword-collection keyword)))
 
 (defn sample-thumbnail
   "given a keyword returns the thumbnail image sample File."
@@ -229,9 +227,7 @@
                                   (safe-delete-keyword
                                    db keyword-collection
                                    (selected-keyword)
-                                   (:_id (first
-                                          (find-parents db keyword-collection
-                                                        (selected-keyword))))))
+                                   (:_id (parent (selected-keyword)))))
          rename-keyword-handler (fn [e]
                                   (rename-keyword
                                    db keyword-collection
@@ -243,12 +239,10 @@
                                 (move-keyword
                                  db keyword-collection
                                  (selected-keyword)
-                                 (:_id (first
-                                        (find-parents db keyword-collection
-                                                      (selected-keyword))))
+                                 (:_id (parent (selected-keyword))))
                                  (input e (str "Move "
                                                (selected-keyword)
-                                               " to:"))))]
+                                               " to:")))]
 
      (native!)
      (map-key f "T" test-handler)
