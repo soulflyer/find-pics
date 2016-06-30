@@ -222,7 +222,7 @@
                                    (:_id (parent (selected-keyword)))))
          rename-keyword-handler (fn [e]
                                   (rename-keyword
-                                   db keyword-collection
+                                   db keyword-collection images-collection
                                    (selected-keyword)
                                    (input e (str "Rename "
                                                  (selected-keyword)
