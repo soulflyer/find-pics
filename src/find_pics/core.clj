@@ -227,7 +227,8 @@
                                    (selected-keyword)
                                    (input e (str "Rename "
                                                  (selected-keyword)
-                                                 " to:"))))
+                                                 " to:")))
+                                  (config! keyword-tree :model (load-model)))
          move-keyword-handler (fn [e]
                                 (move-keyword
                                  db keyword-collection
