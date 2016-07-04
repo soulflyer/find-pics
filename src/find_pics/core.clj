@@ -209,17 +209,18 @@
          all-fullsize-handler (fn [e] (open-all fullsize-dir))
          image-handler    (fn [e] (config! image-pane
                                           :icon (thumbnail-file (selection details)) ))
-         add-keyword-handler  (fn [e] (let [ new-keyword "New Keyword"]
-                                       (add-keyword
-                                        db keyword-collection
-                                        (input e (str "Enter new keyword under "
-                                                      (selected-keyword)))
-                                        (selected-keyword))))
+         add-keyword-handler  (fn [e]
+                                (add-keyword
+                                 db keyword-collection
+                                 (input e (str "Add new keyword under "
+                                               (selected-keyword)))
+                                 (selected-keyword))
+                                (config! keyword-tree :model (load-model)))
          delete-keyword-handler (fn [e]
                                   (safe-delete-keyword
                                    db keyword-collection
-                                   (selected-keyword)
-                                   (:_id (parent (selected-keyword)))))
+                                   (selected-keyword))
+                                  (config! keyword-tree :model (load-model)))
          rename-keyword-handler (fn [e]
                                   (rename-keyword
                                    db keyword-collection images-collection
@@ -231,10 +232,11 @@
                                 (move-keyword
                                  db keyword-collection
                                  (selected-keyword)
-                                 (:_id (parent (selected-keyword))))
+                                 (:_id (parent (selected-keyword)))
                                  (input e (str "Move "
                                                (selected-keyword)
-                                               " to:")))]
+                                               " to:")))
+                                (config! keyword-tree :model (load-model)))]
 
      (native!)
      (map-key f "T" test-handler)
