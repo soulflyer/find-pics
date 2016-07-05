@@ -62,7 +62,10 @@
                 "d   delete keyword (must have no sub keywords)"
                 "D   move keyword"
                 "R   rename keyword"
-                "r   refresh the keyword tree"])
+                "r   refresh the keyword tree"
+                "p   list parents of selected keyword"
+                "x   disconnect keyword"
+                "c   combine selected keyword with another"])
 
 (defn thumbnail-file [image-path] (File. (str thumbnail-dir "/" image-path)))
 (defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
@@ -211,64 +214,61 @@
          all-fullsize-handler (fn [e] (open-all fullsize-dir))
          image-handler    (fn [e] (config! image-pane
                                           :icon (thumbnail-file (selection details)) ))
-         add-keyword-handler  (fn [e]
-                                (add-keyword
-                                 db keyword-collection
-                                 (input e (str "Add new keyword under "
-                                               (selected-keyword)))
-                                 (selected-keyword))
-                                (config! keyword-tree :model (load-model)))
-         delete-keyword-handler (fn [e]
-                                  (safe-delete-keyword
-                                   db keyword-collection
-                                   (selected-keyword))
-                                  (config! keyword-tree :model (load-model)))
-         rename-keyword-handler (fn [e]
-                                  (rename-keyword
-                                   db keyword-collection images-collection
-                                   (selected-keyword)
-                                   (input e (str "Rename "
-                                                 (selected-keyword)
-                                                 " to:")
-                                          :value (selected-keyword)))
-                                  (config! keyword-tree :model (load-model)))
-         disconnect-keyword-handler (fn [e]
-                                      (disconnect-keyword
+         add-keyword-handler        (fn [e]
+                                      (let [selected (selected-keyword)]
+                                        (add-keyword
+                                         db keyword-collection
+                                         (input e (str "Add new keyword under " selected))
+                                         selected)
+                                        (config! keyword-tree :model (load-model))))
+         delete-keyword-handler     (fn [e]
+                                      (safe-delete-keyword
                                        db keyword-collection
-                                       (selected-keyword)
-                                       (input e (str "Disconnect "
-                                                     (selected-keyword)
-                                                     " from:")
-                                              :value (:_id (last
-                                                            (find-parents
-                                                             db
-                                                             keyword-collection
-                                                             (selected-keyword))))))
+                                       (selected-keyword))
                                       (config! keyword-tree :model (load-model)))
-         move-keyword-handler (fn [e]
-                                (move-keyword
-                                 db keyword-collection
-                                 (selected-keyword)
-                                 (:_id (parent (selected-keyword)))
-                                 (input e (str "Move "
-                                               (selected-keyword)
-                                               " to:")))
-                                (config! keyword-tree :model (load-model)))
-         merge-keyword-handler (fn [e]
-                                 (merge-keyword
-                                  db keyword-collection images-collection
-                                  (selected-keyword)
-                                  (input e (str "Combine "
-                                                (selected-keyword)
-                                                " with:")
-                                         :value (selected-keyword)))
-                                 (config! keyword-tree :model (load-model)))
-         parents-handler (fn [e]
-                           (let [parents (map :_id (find-parents
+         rename-keyword-handler     (fn [e]
+                                      (let [selected (selected-keyword)]
+                                        (rename-keyword
+                                         db keyword-collection images-collection
+                                         selected
+                                         (input e (str "Rename " selected " to:")
+                                                :value selected))
+                                        (config! keyword-tree :model (load-model))))
+         disconnect-keyword-handler (fn [e]
+                                      (let [selected (selected-keyword)]
+                                        (disconnect-keyword
+                                         db keyword-collection
+                                         selected
+                                         (input e (str "Disconnect " selected " from:")
+                                                :value (:_id (last
+                                                              (find-parents
+                                                               db
+                                                               keyword-collection
+                                                               selected)))))
+                                        (config! keyword-tree :model (load-model))))
+         move-keyword-handler         (fn [e]
+                                        (let [selected (selected-keyword)]
+                                          (move-keyword
                                            db keyword-collection
-                                           (selected-keyword)))
-                                 parent-list (reduce #(str %1 " -- " %2) parents)]
-                             (alert parent-list)))]
+                                           selected
+                                           (:_id (parent selected))
+                                           (input e (str "Move " selected " to:")))
+                                          (config! keyword-tree :model (load-model))))
+         merge-keyword-handler        (fn [e]
+                                        (let [selected (selected-keyword)]
+                                          (merge-keyword
+                                           db keyword-collection images-collection
+                                           selected
+                                           (input e (str "Combine " selected " with:")
+                                                  :value selected))
+                                          (config! keyword-tree :model (load-model))))
+         parents-handler              (fn [e]
+                                        (let [parents (map :_id (find-parents
+                                                                 db keyword-collection
+                                                                 (selected-keyword)))
+                                              parent-list (reduce
+                                                           #(str %1 " -- " %2) parents)]
+                                          (alert parent-list)))]
 
      (native!)
      (map-key f "T" test-handler)
