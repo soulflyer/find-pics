@@ -9,6 +9,8 @@
                                     add-keyword
                                     move-keyword
                                     delete-keyword
+                                    disconnect-keyword
+                                    merge-keyword
                                     safe-delete-keyword
                                     rename-keyword
                                     find-parents
@@ -227,8 +229,22 @@
                                    (selected-keyword)
                                    (input e (str "Rename "
                                                  (selected-keyword)
-                                                 " to:")))
+                                                 " to:")
+                                          :value (selected-keyword)))
                                   (config! keyword-tree :model (load-model)))
+         disconnect-keyword-handler (fn [e]
+                                      (disconnect-keyword
+                                       db keyword-collection
+                                       (selected-keyword)
+                                       (input e (str "Disconnect "
+                                                     (selected-keyword)
+                                                     " from:")
+                                              :value (:_id (last
+                                                            (find-parents
+                                                             db
+                                                             keyword-collection
+                                                             (selected-keyword))))))
+                                      (config! keyword-tree :model (load-model)))
          move-keyword-handler (fn [e]
                                 (move-keyword
                                  db keyword-collection
@@ -237,7 +253,22 @@
                                  (input e (str "Move "
                                                (selected-keyword)
                                                " to:")))
-                                (config! keyword-tree :model (load-model)))]
+                                (config! keyword-tree :model (load-model)))
+         merge-keyword-handler (fn [e]
+                                 (merge-keyword
+                                  db keyword-collection images-collection
+                                  (selected-keyword)
+                                  (input e (str "Combine "
+                                                (selected-keyword)
+                                                " with:")
+                                         :value (selected-keyword)))
+                                 (config! keyword-tree :model (load-model)))
+         parents-handler (fn [e]
+                           (let [parents (map :_id (find-parents
+                                           db keyword-collection
+                                           (selected-keyword)))
+                                 parent-list (reduce #(str %1 " -- " %2) parents)]
+                             (alert parent-list)))]
 
      (native!)
      (map-key f "T" test-handler)
@@ -257,6 +288,9 @@
      (map-key f "N" add-keyword-handler)
      (map-key f "D" delete-keyword-handler)
      (map-key f "shift D" move-keyword-handler)
+     (map-key f "X" disconnect-keyword-handler)
+     (map-key f "P" parents-handler)
+     (map-key f "C" merge-keyword-handler)
 
      (listen keyword-tree
              :selection
