@@ -49,8 +49,8 @@
 (def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
 
 (def help-text ["h   help screen"
-                "m   open medium size pic in external viewer"
-                "M   open all medium size pics"
+                "o   open medium size pic in external viewer"
+                "O   open all medium size pics"
                 "l   open large"
                 "L   open all Large"
                 "f   open fullsize"
@@ -60,7 +60,7 @@
                 "s   save the selected pic as the sample for this keyword"
                 "n   add new keyword"
                 "d   delete keyword (must have no sub keywords)"
-                "D   move keyword"
+                "m   move keyword"
                 "R   rename keyword"
                 "r   refresh the keyword tree"
                 "p   list parents of selected keyword"
@@ -275,8 +275,8 @@
      (map-key f "Q" quit-handler)
      (map-key f "F" fullsize-handler)
      (map-key f "L" large-handler)
-     (map-key f "M" medium-handler)
-     (map-key f "shift M" all-medium-handler)
+     (map-key f "O" medium-handler)
+     (map-key f "shift O" all-medium-handler)
      (map-key f "shift L" all-large-handler)
      (map-key f "shift F" all-fullsize-handler)
      (map-key f "A" all-handler)
@@ -287,7 +287,7 @@
      (map-key f "shift R" rename-keyword-handler)
      (map-key f "N" add-keyword-handler)
      (map-key f "D" delete-keyword-handler)
-     (map-key f "shift D" move-keyword-handler)
+     (map-key f "M" move-keyword-handler)
      (map-key f "X" disconnect-keyword-handler)
      (map-key f "P" parents-handler)
      (map-key f "C" merge-keyword-handler)
