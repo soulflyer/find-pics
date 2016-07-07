@@ -1,14 +1,13 @@
-# find-pics
+# Keywords
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure program designed to edit and browse a heirarchy of keywords and view images containing the selected keywords. It is based on image-lib.
 
 ## Usage
 
-FIXME
+Use lein bin to create the executable for your system.
 
 ## License
 
-Copyright © 2015 FIXME
+Copyright Iain Wood © 2015
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Distributed under the Eclipse Public License

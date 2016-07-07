@@ -1,9 +1,14 @@
 (ns find-pics.core
   (:import java.io.File)
-  (:require [image-lib.core :refer [find-images
+  (:require [image-lib.core :refer [db
+                                    keyword-collection
+                                    image-collection
+                                    preference-collection
+                                    find-images
                                     find-all-images
                                     image-path
                                     best-image
+                                    best-sub-image
                                     preference
                                     preference!
                                     add-keyword
@@ -31,22 +36,22 @@
              [keymap :refer :all]])
   (:gen-class))
 
-(def database                    "photos")
-(def keyword-collection        "keywords")
-(def preferences-collection "preferences")
-(def images-collection           "images")
-(def connection (mg/connect))
-(def db (mg/get-db connection database))
+;; (def database                    "photos")
+;; (def keyword-collection        "keywords")
+;; (def preferences-collection "preferences")
+;; (def images-collection           "images")
+;; (def connection (mg/connect))
+;; (def db (mg/get-db connection database))
 
-(def thumbnail-dir   (preference db "preferences" "thumbnail-directory"))
-(def medium-dir      (preference db "preferences"    "medium-directory"))
-(def large-dir       (preference db "preferences"     "large-directory"))
-(def fullsize-dir    (preference db "preferences"  "fullsize-directory"))
-(def external-viewer (preference db "preferences"     "external-viewer"))
-(def window-title    (preference db "preferences"        "window-title"))
+(def thumbnail-dir   (preference  "thumbnail-directory"))
+(def medium-dir      (preference     "medium-directory"))
+(def large-dir       (preference      "large-directory"))
+(def fullsize-dir    (preference   "fullsize-directory"))
+(def external-viewer (preference      "external-viewer"))
+(def window-title    (preference         "window-title"))
 
-(def default-thumbnail   (File. (preference db "preferences" "thumbnail-default")))
-(def alternate-thumbnail (File. (preference db "preferences" "thumbnail-default")))
+(def default-thumbnail   (File. (preference "thumbnail-default")))
+(def alternate-thumbnail (File. (preference "thumbnail-default")))
 
 (def help-text ["h   help screen"
                 "o   open medium size pic in external viewer"
@@ -92,11 +97,11 @@
     (thumbnail-file
      (or
        (:sample kw)
-       (image-path (best-image db images-collection given-keyword))))))
+       (image-path (best-image given-keyword))))))
 
 (defn get-image-list
   [given-keyword]
-  (find-images db images-collection "Keywords" given-keyword))
+  (find-images "Keywords" given-keyword))
 
 (defn branch?
   [keyword-node]
@@ -156,19 +161,15 @@
          selected-image   (fn [] (let [sel (selection details)]
                                   (or
                                    sel
-                                   (image-path (best-image db images-collection
-                                                           (selected-keyword))))))
+                                   (image-path (best-image (selected-keyword))))))
          fill-all-details (fn [keyword]
-                            (let [images (find-all-images db images-collection
-                                                          keyword-collection keyword)
+                            (let [images (find-all-images keyword-collection keyword)
                                   image-paths (map image-path images)]
                               (config! details :model image-paths)))
          fill-details     (fn [keyword]
-                            (let [images (find-images db images-collection
-                                                      "Keywords" keyword)
+                            (let [images (find-images "Keywords" keyword)
                                   image-paths (map image-path images)]
                               (config! details :model image-paths)))
-
          open-all         (fn [size-dir]
                             (sh "xargs" external-viewer
                                 :in (join " "
@@ -203,8 +204,7 @@
                                      :icon
                                      (thumbnail-file
                                       (image-path
-                                       (best-image db images-collection
-                                                   keyword-collection (selected-keyword))))))
+                                       (best-sub-image (selected-keyword))))))
          help-handler     (fn [e] (config! details :model help-text))
          fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
          large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
@@ -219,12 +219,10 @@
                                         new (input e (str "Add new keyword under " selected))]
                                     (if new
                                       (doall
-                                       (add-keyword db keyword-collection new selected)
+                                       (add-keyword new selected)
                                        (config! keyword-tree :model (load-model))))))
          delete-keyword-handler (fn [e]
-                                  (safe-delete-keyword
-                                   db keyword-collection
-                                   (selected-keyword))
+                                  (safe-delete-keyword (selected-keyword))
                                   (config! keyword-tree :model (load-model)))
          rename-keyword-handler (fn [e]
                                   (let [selected (selected-keyword)
@@ -232,20 +230,15 @@
                                                    :value selected)]
                                     (if new
                                       (doall
-                                       (rename-keyword
-                                        db keyword-collection images-collection selected new)
+                                       (rename-keyword selected new)
                                        (config! keyword-tree :model (load-model))))))
          disconnect-handler     (fn [e]
                                   (let [selected (selected-keyword)
                                         new (input e (str "Disconnect " selected " from:")
-                                            :value (:_id (last
-                                                          (find-parents
-                                                           db
-                                                           keyword-collection
-                                                           selected))))]
+                                            :value (:_id (last (find-parents selected))))]
                                     (if new
                                       (doall
-                                       (disconnect-keyword db keyword-collection selected new)
+                                       (disconnect-keyword selected new)
                                        (config! keyword-tree :model (load-model))))))
          move-keyword-handler   (fn [e]
                                   (let [selected (selected-keyword)
@@ -253,8 +246,7 @@
                                         parent-id (:_id (parent selected))]
                                     (if new
                                       (doall
-                                       (move-keyword
-                                        db keyword-collection selected parent-id new)
+                                       (move-keyword selected parent-id new)
                                        (config! keyword-tree :model (load-model))))))
          merge-keyword-handler  (fn [e]
                                   (let [selected (selected-keyword)
@@ -262,13 +254,10 @@
                                                         :value selected)]
                                     (if existing
                                       (doall
-                                       (merge-keyword db keyword-collection images-collection
-                                                      selected existing)
+                                       (merge-keyword selected existing)
                                        (config! keyword-tree :model (load-model))))))
          parents-handler        (fn [e]
-                                  (let [parents (map :_id (find-parents
-                                                           db keyword-collection
-                                                           (selected-keyword)))
+                                  (let [parents (map :_id (find-parents (selected-keyword)))
                                         parent-list (reduce
                                                      #(str %1 " -- " %2) parents)]
                                     (alert parent-list)))]
