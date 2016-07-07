@@ -4,6 +4,7 @@
                                     keyword-collection
                                     image-collection
                                     preference-collection
+                                    get-keyword
                                     find-images
                                     find-all-images
                                     image-path
@@ -18,8 +19,8 @@
                                     merge-keyword
                                     safe-delete-keyword
                                     rename-keyword
-                                    find-parents
-                                    all-ids
+                                    first-parent
+                                    all-keywords
                                     used-keywords]]
             [clojure.string :refer [split
                                     join
@@ -35,13 +36,6 @@
              [tree :refer :all]
              [keymap :refer :all]])
   (:gen-class))
-
-;; (def database                    "photos")
-;; (def keyword-collection        "keywords")
-;; (def preferences-collection "preferences")
-;; (def images-collection           "images")
-;; (def connection (mg/connect))
-;; (def db (mg/get-db connection database))
 
 (def thumbnail-dir   (preference  "thumbnail-directory"))
 (def medium-dir      (preference     "medium-directory"))
@@ -76,19 +70,6 @@
 (defn medium-file    [image-path] (File. (str medium-dir "/" image-path)))
 (defn large-file     [image-path] (File. (str large-dir "/" image-path)))
 (defn fullsize-file  [image-path] (File. (str fullsize-dir "/" image-path)))
-
-(defn get-keyword
-  [keyword-name]
-  (first (mc/find-maps db keyword-collection {:_id keyword-name})))
-
-(defn all-keywords
-  []
-  (all-ids db keyword-collection))
-
-(defn parent
-  "get the parent keyword map"
-  [keyword]
-  (first (find-parents db keyword-collection keyword)))
 
 (defn sample-thumbnail
   "given a keyword returns the thumbnail image sample File."
@@ -180,12 +161,6 @@
                                                  #"[\[\]]" "") #", ")))))
 
          quit-handler     (fn [e] (hide! f))
-         test-handler     (fn [e] (alert
-                                  (str
-                                   (split
-                                    (replace
-                                     (str
-                                      (config details :model)) #"[\[\]]" "") #", "))))
          save-handler     (fn [e] (mc/update-by-id
                                   db keyword-collection
                                   (selected-keyword)
@@ -196,15 +171,12 @@
                                                      (selected-keyword)))})))
 
          all-handler      (fn [e] (fill-all-details (selected-keyword)))
-         refresh-handler  (fn [e]
-                            (config! keyword-tree
-                                     :model (load-model)))
+         refresh-handler  (fn [e] (config! keyword-tree :model (load-model)))
          best-handler     (fn [e]
                             (config! image-pane
                                      :icon
                                      (thumbnail-file
-                                      (image-path
-                                       (best-sub-image (selected-keyword))))))
+                                      (image-path (best-sub-image (selected-keyword))))))
          help-handler     (fn [e] (config! details :model help-text))
          fullsize-handler (fn [e] (sh external-viewer (str (fullsize-file (selected-image)))))
          large-handler    (fn [e] (sh external-viewer (str (large-file    (selected-image)))))
@@ -243,7 +215,7 @@
          move-keyword-handler   (fn [e]
                                   (let [selected (selected-keyword)
                                         new (input e (str "Move " selected " to:"))
-                                        parent-id (:_id (parent selected))]
+                                        parent-id (:_id (first-parent selected))]
                                     (if new
                                       (doall
                                        (move-keyword selected parent-id new)
