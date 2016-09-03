@@ -19,9 +19,11 @@
                                     merge-keyword
                                     safe-delete-keyword
                                     rename-keyword
+                                    find-parents
                                     first-parent
                                     all-keywords
-                                    used-keywords]]
+                                    used-keywords
+                                    add-missing-keywords]]
             [clojure.string :refer [split
                                     join
                                     replace]]
@@ -171,7 +173,9 @@
                                                      (selected-keyword)))})))
 
          all-handler      (fn [e] (fill-all-details (selected-keyword)))
-         refresh-handler  (fn [e] (config! keyword-tree :model (load-model)))
+         refresh-handler  (fn [e] (doall
+                                  (add-missing-keywords)
+                                  (config! keyword-tree :model (load-model))))
          best-handler     (fn [e]
                             (config! image-pane
                                      :icon
@@ -235,7 +239,6 @@
                                     (alert parent-list)))]
 
      (native!)
-     (map-key f "T" test-handler)
      (map-key f "Q" quit-handler)
      (map-key f "F" fullsize-handler)
      (map-key f "L" large-handler)
